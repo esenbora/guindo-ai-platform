@@ -1,0 +1,106 @@
+research_career_paths:
+  description: >
+    Research career paths of METU, Boğaziçi, Bilkent Statistics graduates on LinkedIn. 
+    Find at least 10-15 profiles and collect the following information:
+    
+    - Name and graduation year
+    - First job and starting position
+    - Career transitions (which companies, which roles)
+    - Current position and approximate years of experience
+    - Graduate education status (if any, which program)
+    - Estimated salary range (based on market data)
+    
+    Focus especially on people who reached Senior/Lead/Manager level within 
+    5-10 years or started their own businesses.
+  expected_output: >
+    A table in CSV format (career_paths.csv):
+    - name, graduation_year, first_job, current_position, years_experience, 
+    education_level, estimated_salary_usd, career_transitions, notes
+  agent: career_mapper
+
+analyze_education_roi:
+  description: >
+    Using the collected career data, perform the following ROI analysis:
+    
+    Scenario 1: Start working directly
+    - Starting salary: $30,000
+    - Annual salary increase: 10%
+    - Total earnings after 15 years
+    
+    Scenario 2: Get Master's degree (2 years)
+    - Education cost: $20,000
+    - Starting salary (after Master's): $45,000
+    - Annual salary increase: 12%
+    - Total earnings after 13 years
+    
+    Scenario 3: Get PhD (5 years)
+    - Education cost: $0 with stipend (but 5 years opportunity cost)
+    - Starting salary (after PhD): $60,000
+    - Annual salary increase: 15%
+    - Total earnings after 10 years
+    
+    Calculate NPV for each scenario (discount rate: 5%)
+  expected_output: >
+    Excel file (education_vs_work.xlsx) with the following content:
+    - Scenario comparison table
+    - Annual income projection chart data
+    - NPV and IRR calculations
+    - Recommendation and summary of results
+  agent: roi_analyzer
+
+create_fire_plan:
+  description: >
+    Create a detailed FIRE plan to accumulate $600,000 in 15 years:
+    
+    - Starting salary and annual increase
+    - Monthly savings rate (30-50% range)
+    - Investment allocation (ETF, stocks, bonds, crypto)
+    - Expected annual return (7-10% range)
+    - Year-by-year accumulation targets
+    - Passive income calculation with 4% rule
+    - Risk scenarios (bear market, recession)
+    
+    Additionally:
+    - Living expense optimization recommendations
+    - Tax optimization strategies
+    - Legal/bureaucratic steps for early retirement
+  expected_output: >
+    Markdown report (retirement_plan.md):
+    - Executive summary
+    - Annual accumulation table
+    - Investment strategy details
+    - Risk management plan
+    - Action steps
+  agent: fire_planner
+
+discover_income_streams:
+  description: >
+    Conduct market research for second income sources:
+    
+    Platforms to research:
+    - IndieHackers (successful solo founder stories)
+    - Product Hunt (new product launches)
+    - Reddit (r/SideProject, r/passive_income)
+    - Twitter/X (indie maker community)
+    
+    Categories to focus on:
+    - SaaS products (especially B2B micro-SaaS)
+    - Mobile apps (iOS/Android)
+    - Template/theme sales
+    - Notion/Airtable templates
+    - Newsletter and content creation
+    
+    For each category:
+    - At least 3 successful examples
+    - Monthly income estimate
+    - Starting cost and time investment
+    - Required technical skills
+    - Market entry difficulty
+  expected_output: >
+    Markdown report (microbusiness_report.md):
+    - Category-based opportunity analysis
+    - Successful example case studies
+    - ROI and risk assessment for each idea
+    - Priority ranking (quick start → long-term growth)
+    - Action plan
+  agent: market_watcher

@@ -1,0 +1,28 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "api"
+source = "."
+[services.env]
+GROQ_API_KEY = "${GROQ_API_KEY}"
+SERPER_API_KEY = "${SERPER_API_KEY}"
+API_SECRET_KEY = "${API_SECRET_KEY}"
+ENVIRONMENT = "production"
+ALLOWED_ORIGINS = "https://guindo.me,https://www.guindo.me"
+
+[services.ports]
+port = 8000
+
+[services.health_checks]
+grace_period_seconds = 10
+interval_seconds = 30
+timeout_seconds = 5
+restart_policy = "on_failure"
+max_retries = 10

@@ -1,0 +1,536 @@
+"""
+FIRE Planning System - FastAPI Backend
+Modern, async API for personalized FIRE planning
+"""
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, List, Dict
+import os
+from dotenv import load_dotenv
+from groq import Groq
+
+load_dotenv()
+
+app = FastAPI(
+    title="FIRE Planning API",
+    description="AI-powered personalized FIRE planning and career guidance",
+    version="1.0.0"
+)
+
+# CORS for Next.js frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Groq client
+client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+
+# ============ MODELS ============
+
+class UserProfile(BaseModel):
+    # Basic Info
+    name: str
+    age: int
+    university: str
+    major: str
+    grad_year: str
+    location: str
+    relocation_ok: str
+
+    # Current Status
+    current_job: str
+    current_salary: Optional[str] = "0"
+    job_satisfaction: Optional[str] = "0"
+    years_current_job: Optional[str] = "0"
+    industry: Optional[str] = "none"
+    company_size: Optional[str] = "none"
+
+    # Skills
+    programming_langs: str
+    prog_level: str
+    ml_exp: str
+    frameworks: str
+    cloud_exp: str
+    data_tools: str
+    github_projects: str
+    certifications: str
+
+    # Education - Basic
+    considering_masters: str
+
+    # Education - Detailed (conditional)
+    masters_fields_interested: Optional[str] = ""
+    masters_location_preference: Optional[str] = ""
+    masters_program_language: Optional[str] = ""
+    masters_type: Optional[str] = ""
+    can_afford_masters: Optional[str] = ""
+    masters_timeline: Optional[str] = ""
+    masters_work_while_study: Optional[str] = ""
+    masters_priority: Optional[str] = ""
+    masters_specific_programs: Optional[str] = ""
+    masters_concerns: Optional[str] = ""
+
+    # Career Goals
+    dream_job: str
+    dream_salary: str
+    target_years: str
+    career_path_preference: str
+    willing_to_study: str
+
+    # Financial
+    monthly_expenses: str
+    savings: str
+    monthly_savings_goal: str
+    debts: str
+    family_support: str
+    risk_tolerance: str
+
+    # FIRE Vision
+    retire_age: str
+    fire_lifestyle: str
+    retirement_location: str
+    passive_income_interest: str
+
+    # Side Hustle
+    time_for_side: str
+    side_interests: str
+    freelance_exp: str
+    preferred_side_income: str
+    monthly_side_income_goal: str
+
+    # Constraints & Preferences
+    time_commit: str
+    learning_style: str
+    work_life_balance: str
+    biggest_obstacle: str
+    need_most: str
+
+class AnalysisRequest(BaseModel):
+    profile: UserProfile
+    analysis_type: str  # "career" | "roi" | "fire" | "side_hustle"
+
+class AnalysisResponse(BaseModel):
+    analysis: str
+    analysis_type: str
+    timestamp: str
+
+# ============ AI HELPERS ============
+
+def call_ai(prompt: str, system: str) -> str:
+    """Call Groq API"""
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4096
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+
+# ============ ANALYSIS FUNCTIONS ============
+
+def analyze_career(profile: UserProfile) -> str:
+    """Generate career path analysis"""
+    system = "You are an experienced career coach. You provide CLEAR and ACTIONABLE roadmaps for indecisive people."
+
+    prompt = f"""DETAILED PERSONAL CAREER ANALYSIS:
+
+👤 PERSON:
+- {profile.name}, {profile.age} years old, {profile.university} {profile.major} ({profile.grad_year})
+- Location: {profile.location}, Open to relocation: {profile.relocation_ok}
+- Biggest obstacle: {profile.biggest_obstacle}, What they need most: {profile.need_most}
+
+💼 CURRENT SITUATION:
+- Position: {profile.current_job} (${profile.current_salary}/year)
+- Satisfaction: {profile.job_satisfaction}/10, Experience: {profile.years_current_job}
+- Industry: {profile.industry}, Company size: {profile.company_size}
+
+🛠️ SKILLS:
+- Languages: {profile.programming_langs} (Level: {profile.prog_level})
+- ML/AI: {profile.ml_exp}, Frameworks: {profile.frameworks}
+- Cloud: {profile.cloud_exp}, Data Tools: {profile.data_tools}
+- GitHub: {profile.github_projects}, Certifications: {profile.certifications}
+
+🎓 EDUCATION:
+- Master's consideration: {profile.considering_masters}
+- Fields interested: {profile.masters_fields_interested}
+- Location preference: {profile.masters_location_preference}
+- Can afford: {profile.can_afford_masters}
+
+🎯 GOALS:
+- Dream role: {profile.dream_job}
+- Target salary: ${profile.dream_salary}/year (in {profile.target_years} years)
+- Career path preference: {profile.career_path_preference}
+- Work-life balance importance: {profile.work_life_balance}
+- Learning commitment: {profile.time_commit} hours/week
+- Learning style: {profile.learning_style}
+
+CREATE DETAILED CAREER PLAN (Markdown format):
+
+## 1️⃣ Current Situation Analysis
+- **Strengths** (3 points)
+- **Gaps/Risks** (3 points)
+- **Master's Decision**: Should they do it? (clear reasoning)
+
+## 2️⃣ Step-by-Step Roadmap
+- **First 3 Months**: Concrete actions
+- **6-12 Months**: Skills/Certifications
+- **1-2 Years**: Position changes
+- **3-5 Years**: Reaching target role
+
+## 3️⃣ Priority Skills
+- Immediate (1-3 months)
+- Mid-term (3-12 months)
+- Long-term (1-2 years)
+
+## 4️⃣ Projects & Certifications
+- 3 project recommendations
+- 2-3 certifications (prioritized)
+
+## 5️⃣ Salary & Timeline Projection
+| Year | Position | Salary | Notes |
+|------|----------|--------|-------|
+| 0 | {profile.current_job} | ${profile.current_salary} | Now |
+| ... | ... | ... | ... |
+
+## 6️⃣ Risks & Plan B
+- Failure probability
+- Things to watch out for
+- Alternative plan
+
+CLEAR, ACTIONABLE, Max 50 lines."""
+
+    return call_ai(prompt, system)
+
+def analyze_roi(profile: UserProfile) -> str:
+    """Generate ULTRA DETAILED education ROI analysis with program recommendations"""
+    system = "Sen dünya çapında eğitim danışmanı ve finansal analistisin. Kararsız insanlara DETAYLI SENARYO ANALİZİ ve SOMUT PROGRAM ÖNERİLERİ veriyorsun."
+
+    years_left = int(profile.retire_age) - int(profile.age)
+    current_age = int(profile.age)
+
+    prompt = f"""ULTRA DETAYLI EĞİTİM & MASTER ANALİZİ + PROGRAM ÖNERİLERİ
+
+👤 KİŞİ:
+- {profile.name}, {current_age} yaş, {profile.university} {profile.major}
+- Master: {profile.considering_masters}
+- İlgi alanları: {profile.masters_fields_interested}
+- Lokasyon tercihi: {profile.masters_location_preference}
+- Dil: {profile.masters_program_language}
+- Tür: {profile.masters_type}
+- Bütçe: {profile.can_afford_masters}
+- Zaman: {profile.masters_timeline}
+- Çalışma durumu: {profile.masters_work_while_study}
+- Öncelik: {profile.masters_priority}
+- Aklındaki programlar: {profile.masters_specific_programs}
+- Endişeler: {profile.masters_concerns}
+
+💰 FİNANSAL:
+- Mevcut: ${profile.current_salary}, Birikim: ${profile.savings}
+- Hedef: {profile.dream_job} - ${profile.target_salary}
+- FIRE: {years_left} yılda ${profile.target_portfolio}
+- Risk: {profile.risk_tolerance}
+
+## 1️⃣ MASTER YAPMA KARARI ANALİZİ
+
+### Senin İçin Master Gerekli Mi?
+- {profile.dream_job} için master **ŞART MI** yoksa **BONUS MU**?
+- Master OLMADAN bu pozisyona ulaşmak mümkün mü?
+- Sektörde master'ın değeri nedir? (gerçekçi değerlendirme)
+
+## 2️⃣ DETAYLI SENARYO KARŞILAŞTIRMASI (5+ Senaryo)
+
+Her senaryo için:
+- Toplam maliyet (tuition + yaşam + fırsat maliyeti)
+- Başlangıç maaşı (master sonrası)
+- {years_left} yıl toplam kazanç
+- NPV (discount %5)
+- ROI (%)
+- {profile.dream_job}'a kaç yılda ulaşır
+- FIRE hedefine ({years_left} yıl) etki
+
+### Senaryo 1: Master YOK - Direkt İşe
+- Avantajlar / Dezavantajlar
+- Hesaplamalar
+
+### Senaryo 2: Türkiye Devlet Master (Ücretsiz)
+- Hangi üniversiteler (en iyi 3-5)
+- Avantajlar / Dezavantajlar
+- Hesaplamalar
+
+### Senaryo 3: Türkiye Özel Master ($5-15K)
+- Hangi programlar (somut öneriler)
+- Avantajlar / Dezavantajlar
+- Hesaplamalar
+
+### Senaryo 4: Avrupa Master ($15-30K)
+- Hangi ülkeler/programlar (budget-friendly)
+- Almanya (ücretsiz), Hollanda, İsveç, vs.
+- Avantajlar / Dezavantajlar
+- Hesaplamalar
+
+### Senaryo 5: ABD/İngiltere Top Programs ($60K+)
+- Hangi programlar (özellikle {profile.masters_specific_programs} varsa değerlendir)
+- Burs imkanları
+- Avantajlar / Dezavantajlar
+- Hesaplamalar
+
+### Senaryo 6: Online/Part-time Master
+- Hangi programlar (Georgia Tech OMSCS, UT Austin, vs.)
+- Avantajlar / Dezavantajlar
+- Hesaplamalar
+
+## 3️⃣ SOMUT PROGRAM ÖNERİLERİ
+
+Senin profiline göre EN UYGUN 5-7 PROGRAM:
+
+Her program için:
+- **Program Adı & Üniversite**
+- **Lokasyon & Şehir**
+- **Süre** (1 yıl / 2 yıl / part-time)
+- **Toplam Maliyet** (gerçekçi)
+- **Kabul Şansın** (düşük/orta/yüksek + neden)
+- **Güçlü Yönleri** (kariyer, network, lokasyon)
+- **Zayıf Yönleri**
+- **ROI Skoru** (/10)
+- **Sana Uygunluk Skoru** (/10)
+- **Application Deadline** (yaklaşık)
+
+Örnek format:
+### Program 1: ODTÜ Bilgisayar Mühendisliği MS
+- **Lokasyon**: Ankara, Türkiye
+- **Süre**: 2 yıl (thesis)
+- **Maliyet**: ~$3K
+- **Kabul Şansı**: Yüksek (aynı üniversite)
+- **Güçlü**: Prestij, network, araştırma imkanı
+- **Zayıf**: Uzun süre, düşük maaş artışı
+- **ROI**: 7/10
+- **Uygunluk**: 8/10
+
+## 4️⃣ DETAYLI FİNANSAL TABLO
+
+| Senaryo | Maliyet | Başlangıç Maaş | 5Y Toplam | 10Y Toplam | NPV | ROI | FIRE'a Etki |
+|---------|---------|-----------------|-----------|------------|-----|-----|-------------|
+| 1. İş   | $0      | $40K           | ?         | ?          | ?   | -   | ?           |
+| 2. TR Devlet | $3K | $48K          | ?         | ?          | ?   | ?%  | ?           |
+| 3. TR Özel | $12K  | $52K           | ?         | ?          | ?   | ?%  | ?           |
+| 4. Avrupa | $25K   | $65K           | ?         | ?          | ?   | ?%  | ?           |
+| 5. ABD | $70K      | $85K           | ?         | ?          | ?   | ?%  | ?           |
+| 6. Online | $10K   | $45K           | ?         | ?          | ?   | ?%  | ?           |
+
+## 5️⃣ SENİN ENDİŞELERİNE CEVAP
+
+Endişeler: {profile.masters_concerns}
+
+Her endişeyi TEK TEK ele al ve çözüm öner.
+
+## 6️⃣ NET TAVSİYE & KARAR AĞACI
+
+### EĞER {profile.masters_priority} önceliğiyse:
+→ Hangi senaryo/program?
+→ Neden bu?
+→ Nasıl başvurulur?
+→ Finanse nasıl edilir?
+
+### ALTERNATİF PLAN:
+Eğer en iyi seçenek olmazsa, Plan B nedir?
+
+### ZAMAN ÇİZELGESİ:
+- Şimdi - 3 ay: ?
+- 3-6 ay: ?
+- 6-12 ay: ?
+- Application dönemleri
+
+### SON SÖZ:
+1 paragraf, NET karar: Master yap/yapma + hangi program + neden?
+
+Max 100 satır. DETAYLI, SOMUT, UYGULANABILIR.
+Gerçek program adları, üniversiteler, şehirler kullan.
+Hesaplamalar GERÇEKÇI olsun."""
+
+    return call_ai(prompt, system)
+
+def analyze_fire(profile: UserProfile) -> str:
+    """Generate FIRE plan"""
+    system = "Sen FIRE hareketi uzmanısın. Kararsız insanlara GERÇEKÇI ve UYGULANABILIR emeklilik planları yapıyorsun."
+
+    current_age = int(profile.age)
+    retire_age = int(profile.retire_age)
+    years = retire_age - current_age
+
+    prompt = f"""KİŞİYE ÖZEL FIRE PLANI (Markdown):
+
+{profile.name}: {current_age} → {retire_age} yaş ({years} yıl)
+Hedef: ${profile.target_portfolio}, Pasif gelir: ${profile.passive_income_goal}/ay
+Neden: {profile.why_fire}, Yaşam: {profile.retirement_lifestyle}
+
+## 1️⃣ Gerçekçilik Testi
+- ${profile.target_portfolio} hedefi {years} yılda gerçekçi mi?
+- Riskler neler?
+
+## 2️⃣ Aylık Birikim Planı
+- Mevcut maaşla: ?
+- Hedef maaşla: ?
+- Tasarruf oranı: %?
+
+## 3️⃣ Yatırım Stratejisi
+Risk: {profile.risk_tolerance}
+- Hisse/ETF: %?
+- Tahvil: %?
+- Emlak: %?
+- Platformlar: ?
+
+## 4️⃣ Yıllık Milestone'lar
+| Yıl | Yaş | Birikim | Nasıl? |
+|-----|-----|---------|--------|
+| ... | ... | ... | ... |
+
+## 5️⃣ Gelir Artırma
+- Ana iş projeksiyonu
+- Yan gelir hedefi
+- Yan gelir şart mı?
+
+## 6️⃣ Harcama Optimizasyonu
+- Şu an: ${profile.monthly_expenses}
+- Optimize: ?
+- Kesinti alanları
+
+## 7️⃣ Acil Durum Planları
+- Bear market
+- İş kaybı
+- Sağlık
+
+## 8️⃣ İlk 30 Gün Aksiyonları
+5 somut adım
+
+## 9️⃣ Başarı Olasılığı
+- Mevcut: %?
+- Tüm önerilerle: %?
+- Sebep
+
+Max 60 satır."""
+
+    return call_ai(prompt, system)
+
+def analyze_side_hustle(profile: UserProfile) -> str:
+    """Generate side hustle strategies"""
+    system = "Sen girişimcilik ve yan gelir danışmanısın. Kararsız insanlara SOMUT, UYGULANABILIR yan iş fikirleri veriyorsun."
+
+    prompt = f"""KİŞİYE ÖZEL YAN GELİR STRATEJİLERİ (Markdown):
+
+{profile.name}, {profile.age} yaş
+Beceriler: {profile.programming_langs}, ML: {profile.ml_exp} yıl
+Haftalık: {profile.weekly_hours} saat, Girişimci: {profile.entrepreneurial}/10
+
+## 5 Strateji (Kolay → Zor)
+
+### 1. Freelance/Konsültasyon
+- **Ne yapacak**: ?
+- **Gelir**: İlk ay $?, 6.ay $?, 1.yıl $?
+- **Zaman**: Başlangıç ?, haftalık ?
+- **Maliyet**: $?
+- **Uygunluk**: ?/10
+- **İlk 30 gün**: Hafta 1-4 planı
+- **Başarı şansı**: %?
+
+### 2-5. [Diğer stratejiler aynı formatta]
+
+## NET TAVSİYE
+- Hangisiyle başlamalı?
+- Neden?
+- İlk 7 gün yapılacaklar
+- 6 ay hedef gelir
+- FIRE'a etki
+
+Max 80 satır."""
+
+    return call_ai(prompt, system)
+
+# ============ API ENDPOINTS ============
+
+@app.get("/")
+async def root():
+    return {
+        "message": "FIRE Planning API",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "analyze": "/api/analyze (POST)"
+        }
+    }
+
+@app.get("/health")
+async def health():
+    """Health check"""
+    return {
+        "status": "healthy",
+        "groq_api_configured": bool(os.getenv('GROQ_API_KEY'))
+    }
+
+@app.post("/api/analyze", response_model=AnalysisResponse)
+async def analyze(request: AnalysisRequest):
+    """
+    Generate AI analysis based on user profile
+
+    analysis_type: "career" | "roi" | "fire" | "side_hustle"
+    """
+    from datetime import datetime
+
+    analysis_funcs = {
+        "career": analyze_career,
+        "roi": analyze_roi,
+        "fire": analyze_fire,
+        "side_hustle": analyze_side_hustle
+    }
+
+    if request.analysis_type not in analysis_funcs:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid analysis_type. Must be one of: {list(analysis_funcs.keys())}"
+        )
+
+    try:
+        analysis = analysis_funcs[request.analysis_type](request.profile)
+
+        return AnalysisResponse(
+            analysis=analysis,
+            analysis_type=request.analysis_type,
+            timestamp=datetime.now().isoformat()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/analyze-all")
+async def analyze_all(profile: UserProfile):
+    """
+    Generate all 4 analyses at once
+    Returns: {career, roi, fire, side_hustle}
+    """
+    from datetime import datetime
+
+    try:
+        results = {
+            "career": analyze_career(profile),
+            "roi": analyze_roi(profile),
+            "fire": analyze_fire(profile),
+            "side_hustle": analyze_side_hustle(profile),
+            "timestamp": datetime.now().isoformat()
+        }
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
