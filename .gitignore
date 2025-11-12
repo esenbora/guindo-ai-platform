@@ -69,3 +69,13 @@ dmypy.json
 node_modules/
 .next/
 *.next/
+web/frontend/out/
+
+# Temporarily exclude API routes and auth pages for static export
+web/frontend/app/api/
+web/frontend/app/dashboard/
+web/frontend/app/questionnaire/
+web/frontend/app/results/
+web/frontend/app/payment/
+web/frontend/middleware.ts
+web/frontend/contexts/AuthContext.tsx

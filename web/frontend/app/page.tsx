@@ -1,15 +1,16 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Check, Sparkles, TrendingUp, Target, Zap, Shield, Brain, ChevronRight, Code, Briefcase, Stethoscope, Palette } from 'lucide-react'
 
 export default function Home() {
-  const router = useRouter()
+  const handleGetStarted = () => {
+    alert('Coming soon! Full platform launching soon.')
+  }
 
   return (
     <main className="min-h-screen bg-[#0A0A0F]">
-      <LandingPage onGetStarted={() => router.push('/payment')} />
+      <LandingPage onGetStarted={handleGetStarted} />
     </main>
   )
 }
@@ -181,7 +182,8 @@ function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
 }
 
 function PaymentPage({ onSkip }: { onSkip: () => void }) {
-  const { login } = useAuth()
+  // Auth disabled for static export
+  const login = () => console.log('Auth disabled')
 
   return (
     <motion.div
